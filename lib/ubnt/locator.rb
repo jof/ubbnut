@@ -23,7 +23,7 @@ module UBNT
         case arping_type
         when 'iputils'
           output = `arping -I #{interface_name} -c 15 #{ip}`
-          macs = output.split("\n").select{ |line| line =~ /cast reply from .* [/ }.map{ |line| line.split[4].delete('[]') }.sort.uniq
+          macs = output.split("\n").select{ |line| line =~ /cast reply from .* \[/ }.map{ |line| line.split[4].delete('[]') }.sort.uniq
         when 'habets'
           output = `arping -i #{interface_name} -c 15 #{ip}`
           macs = output.split("\n").select{ |line| line =~ /bytes from .* index=/ }.map{ |line| line.split[3] }.sort.uniq

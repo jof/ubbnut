@@ -1,8 +1,5 @@
 module UBNT
   class Configuration
-    class NotValid < Exception
-    end
-
     attr_accessor :config
 
     attr_accessor :hardware_type
@@ -17,72 +14,85 @@ module UBNT
     attr_accessor :frequency
 
     # FIXME: get exhaustive lists for these things
-    HARDWARE_TYPES = [ "Nanostation Loco M5" ]
+    # Can this use the CRDA?
     MODULATION_AND_CODING_SCHEMES = [ 15 ]
     IEEE_80211_RF_MODES = [ "11NAHT20", "11NAHT40", "11NAHT40PLUS", "11NAHT40MINUS",
                             "11NGHT20", "11NGHT40" ]
     FIVE_GHZ_FREQUENCIES = (5745 .. 5805)
-    TWO_GHZ_FREQUENCIES = (0 .. 0)
+    TWO_GHZ_FREQUENCIES = (0 .. 0) #TODO
     #
     HARDWARE_RADIO_FREQUENCIES = { "Nanostation Loco M5" => [ FIVE_GHZ_FREQUENCIES ] }
     HARDWARE_RADIO_MODES =       { "Nanostation Loco M5" => [ "11NAHT20", "11NAHT40", "11NAHT40PLUS", "11NAHT40MINUS" ] }
     HARDWARE_SPECTRAL_WIDTHS =   { "Nanostation Loco M5" => [ 5, 10, 20, 40 ] } 
 
+    # Define getter and setter methods for simple, one-line directives
+    [ 
+      ['hostname', 'resolv.host.1.name'],
+      ['ssid',     'wireless.1.ssid'],
+      ['snmp_location', 'snmp.location'],
+      ['snmp_contact', 'snmp.contact'],
+      ['snmp_community', 'snmp.community'],
+      ['default_gateway', 'route.1.gateway'],
+      ['rf_mcs', 'radio.1.rate.mcs'],
+      ['rf_mode', 'radio.1.ieee_mode'],
+      ['rf_frequency', 'radio.1.freq'],
+      ['rf_ack_timeout', 'radio.1.acktimeout'],
+      ['rf_ack_distance', 'radio.1.ackdistance'],
+      ['ip', 'netconf.3.ip'],
+      ['netmask', 'netconf.3.netmask'],
+      ['default_gateway', 'route.1.gateway'],
+    ].each do |name, directive|
+      define_method(name.to_sym) { config[directive] }
+      define_method((name+'=').to_sym) do |value|
+        config[directive] = value
+      end
+    end
+
+    # One-line, enabled/disabled knobs
+    [
+      ['autoip', 'netconf.3.autoip.status' ],
+      ['filter_eapol', 'ebtables.3.status' ],
+    ].each do |name, directive|
+      define_method(name.to_sym) do
+        case config[directive]
+        when "enabled"
+          true
+        when "disabled"
+        else
+          nil
+        end
+      end
+      define_method((name+'=').to_sym) do |value|
+        if value then
+          config[directive] = "enabled"
+        else
+          config[directive] = "disabled"
+        end
+      end
+
     def initialize(hardware_type, config = {})
+      unless HARDWARE_TYPES.include?(hardware_type) then
+        raise NotValidHardware.new("The requested hardware type is non-existant or not defined.")
+      end
+
       @hardware_type = hardware_type
       @config = Hash.new
       # Start with the factory-default configuration
-      @config.merge(factory_default)
-      @config.merge(config) if config.length > 0
+      @config.merge!(factory_default)
+      @config.merge!(config) if config.length > 0
 
       raise ArgumentError("Hardware type #{hardware_type} is not valid") unless HARDWARE_TYPES.include?(hardware_type)
-
-      # Define getter and setter methods for simple, one-line directives
-      [ 
-        ['hostname', 'resolv.host.1.name'],
-        ['ssid',     'wireless.1.ssid'],
-        ['snmp_location', 'snmp.location'],
-        ['snmp_contact', 'snmp.contact'],
-        ['snmp_community', 'snmp.community'],
-        ['default_gateway', 'route.1.gateway'],
-        ['rf_mcs', 'radio.1.rate.mcs'],
-        ['rf_mode', 'radio.1.ieee_mode'],
-        ['rf_frequency', 'radio.1.freq'],
-        ['rf_ack_timeout', 'radio.1.acktimeout'],
-        ['rf_ack_distance', 'radio.1.ackdistance'],
-        ['ip', 'netconf.3.ip'],
-        ['netmask', 'netconf.3.netmask'],
-        ['default_gateway', 'route.1.gateway'],
-      ].each do |name, directive|
-        define_method(name.to_sym) { config[directive] }
-        define_method(name+'='.to_sym) do |value|
-          config[directive] = value
-        end
-      end
-
-      # One-line, enabled/disabled knobs
-      [
-        ['autoip', 'netconf.3.autoip.status' ],
-        ['filter_eapol', 'ebtables.3.status' ],
-      ].each do |name, directive|
-        define_method(name.to_sym) do
-          case config[directive]
-          when "enabled"
-            true
-          when "disabled"
-          else
-            nil
-          end
-        end
-        define_method(name+'='.to_sym) do |value|
-          if value then
-            config[directive] = "enabled"
-          else
-            config[directive] = "disabled"
-        end
-      end
-
     end # def initialize
+
+    def to_s
+      lines = []
+      config.each do |key, value|
+        lines << "#{key}=#{value}"
+      end
+      lines = lines.join("\n")
+      # Trailing newlines are appreciated everywhere.
+      lines = lines + "\n"
+    end
 
 
 
@@ -96,13 +106,85 @@ module UBNT
     # 4 -- 5  Mhz
     #
     # radio.1.cwm.mode
-    # 2 -- 40 Mhz
-    # 1 -- in the default configuration (20 Mhz?)
-    # 0 -- 20 Mhz
-    # 0 -- 10 Mhz
-    # 0 -- 5  Mhz
+    # 2 -- 40 Mhz (11NAHT40, 11NAHT40PLUS, 11NAHT40MINUS)
+    # 1 -- auto 20/40 Mhz (11NAHT40)
+    # 0 -- 20 Mhz (11NAHT20)
+    # 0 -- 10 Mhz (11NAHT20)
+    # 0 -- 5  Mhz (11NAHT20)
     #
     # if radio.N.freq is "0", with 40 Mhz channels, the plus/minus can be left off. It's selected automatically (lower for every frequency, except the last)
+
+# 5 Mhz MCS Rates
+# MCS 15 - 32.5
+# MCS 14 - 29.25
+# MCS 13 - 26
+# MCS 12 - 19.5
+# MCS 11 - 13
+# MCS 10 - 9.75
+# MCS 9 - 6.5
+# MCS 8 - 3.25
+# MCS 7 - 16.25
+# MCS 6 - 14.625
+# MCS 5 - 13
+# MCS 4 - 9.75
+# MCS 3 - 6.5
+# MCS 2 - 4.875
+# MCS 1 - 3.25
+# MCS 0 - 1.625
+
+# 10 Mhz MCS
+# MCS 15 - 65
+# MCS 14 - 58.5
+# MCS 13 - 52
+# MCS 12 - 39
+# MCS 11 - 26
+# MCS 10 - 19.5
+# MCS 9 - 13
+# MCS 8 - 6.5
+# MCS 7 - 32.5
+# MCS 6 - 29.25
+# MCS 5 - 26
+# MCS 4 - 19.5
+# MCS 3 - 13
+# MCS 2 - 9.75
+# MCS 1 - 6.5
+# MCS 0 - 3.25
+
+# 20 Mhz MCS
+# MCS 15 - 130
+# MCS 14 - 117
+# MCS 13 - 104
+# MCS 12 - 78
+# MCS 11 - 52
+# MCS 10 - 39
+# MCS 9 - 26
+# MCS 8 - 13
+# MCS 7 - 65
+# MCS 6 - 58.5
+# MCS 5 - 52
+# MCS 4 - 39
+# MCS 3 - 26
+# MCS 2 - 19.5
+# MCS 1 - 13
+# MCS 0 - 6.5
+
+# 20/40 Mhz MCS
+# MCS 15 - 130 [300]
+# MCS 14 - 117 [270]
+# MCS 13 - 104 [240]
+# MCS 12 - 78 [180]
+# MCS 11 - 52 [120]
+# MCS 10 - 39 [90]
+# MCS 9 - 26 [60]
+# MCS 8 - 13 [30]
+# MCS 7 - 65 [150]
+# MCS 6 - 58.5 [135]
+# MCS 5 - 52 [120]
+# MCS 4 - 39 [90]
+# MCS 3 - 26 [60]
+# MCS 2 - 19.5 [45]
+# MCS 1 - 13 [30]
+# MCS 0 - 6.5 [15]
 
     # Set the transmission and reception bandwidth, in Mhz
     def bandwidth(mhz)
@@ -110,6 +192,11 @@ module UBNT
       determine_rf_mode
     end
 
+    # TODO
+    def spectrum_bandwidth
+    end
+
+    # Set the desired spectrum bandwidth.
     def spectrum_bandwidth=(width)
       compatible_widths = HARDWARE_SPECTRAL_WIDTHS[hardware_type]
       unless compatible_widths.include?(width) then
@@ -118,6 +205,7 @@ module UBNT
       @spectrum_bandwidth = width
     end
 
+    # Determine which mode to set for an extension channel, if necessary.
     def determine_rf_mode
       # frequency and spectral width determines mode
       #
@@ -126,15 +214,15 @@ module UBNT
       # if the spectral width, but not frequency is set, set the freq to zero but don't set plus/minus
 
       if frequency == 0 then
-        return ""
+        return "" # "auto"?
       end
 
-      if spectrum_bandwidth == 20 then
+
+
+      case spectrum_bandwidth
+      when 5, 10, 20
         return "11NAHT20"
-      end
-
-      if frequency and spectrum_bandwidth then
-
+      when 40
         hardware_ranges = HARDWARE_RADIO_FREQUENCIES[hardware_type]
         desired_frequency_range = hardware_ranges.select { |range| range.include?(frequency) }.first
         unless desired_frequency_range then
@@ -143,24 +231,22 @@ module UBNT
 
         frequency_table_index = desired_frequency_range.step(spectrum_bandwidth).index(frequency)
         if frequency_table_index == 0 then # We're at the bottom of the spectrum
-          mode = upper
-          
+          return "11NAHT40PLUS"
         else # We're somewhere in the middle or at the upper end
-          mode = lower
+          return "11NAHT40MINUS"
         end
-
-      else
+      end
       end
 
     end
 
+    # TODO
     def mcs
     end
 
-    def spectrum_bandwidth
-    end
 
-    def self.factory_default
+    # A configuration hash of the factory-default options.
+    def factory_default
       {
         "bridge.1.devname" => "br0",
         "bridge.1.fd" => "1",
@@ -252,6 +338,7 @@ module UBNT
     def diff(config)
     end
 
+    # Parse a textual string of "key=value" lines into a configuration.
     def parse(string)
       string.split("\n").each do |line|
         if parts = line.split("=") and parts.length == 2 then
@@ -260,9 +347,10 @@ module UBNT
       end
     end
 
+    # Return true if the configured parameters are valid.
     def valid?
       # If you're using WPA, an SSID and a PSK needs to be set.
-      if wpa_mode == ( 'authenticator' || 'supplicant' )) then
+      if wpa_mode == ( 'authenticator' || 'supplicant' ) then
         if ssid.nil? or wpa_psk.nil? then
           raise NotValid
         end
@@ -287,22 +375,16 @@ module UBNT
                   key[1].is_a?(String) &&
                   key[1].length > 0 &&
                   key[2].is_a?(String) &&
-                  key[2].length > 0 &&
+                  key[2].length > 0
                  ) then
                  raise NotValid.new("SSH keys must have a type, value, and a comment")
           end
         end
       end
-    end
 
-    def delete_config_starting_with(prefix)
-      config.each do |key,value|
-        if key.to_s.start_with?(prefix) then
-          @config.delete(key)
-        end
-      end
-    end
-
+      # We got here and nothing has been raised, must be a valid config.
+      true
+    end # def valid?
 
     def wpa_mode
       @wpa_mode
@@ -331,6 +413,17 @@ module UBNT
       end
     end
 
-  end
 
-end
+
+    private
+
+    def delete_config_starting_with(prefix)
+      config.each do |key,value|
+        if key.to_s.start_with?(prefix) then
+          @config.delete(key)
+        end
+      end
+    end
+
+  end # class Configuration
+end # module UBNT
