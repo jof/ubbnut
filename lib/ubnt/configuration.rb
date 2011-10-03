@@ -10,20 +10,30 @@ module UBNT
     attr_accessor :ssh_keys
     attr_accessor :dns_recursors
     attr_accessor :ntp_servers
-    attr_accessor :spectrum_bandwidth
+    attr_accessor :bandwidth
     attr_accessor :frequency
+    attr_accessor :atheros_mode
 
     # FIXME: get exhaustive lists for these things
     # Can this use the CRDA?
     MODULATION_AND_CODING_SCHEMES = [ 15 ]
     IEEE_80211_RF_MODES = [ "11NAHT20", "11NAHT40", "11NAHT40PLUS", "11NAHT40MINUS",
-                            "11NGHT20", "11NGHT40" ]
+                            "11NGHT20", "11NGHT40", "11NGHT40PLUS", "11NGHT40MINUS" ]
     FIVE_GHZ_FREQUENCIES = (5745 .. 5805)
-    TWO_GHZ_FREQUENCIES = (0 .. 0) #TODO
+    TWO_GHZ_FREQUENCIES = (2412 .. 2462)
     #
-    HARDWARE_RADIO_FREQUENCIES = { "Nanostation Loco M5" => [ FIVE_GHZ_FREQUENCIES ] }
-    HARDWARE_RADIO_MODES =       { "Nanostation Loco M5" => [ "11NAHT20", "11NAHT40", "11NAHT40PLUS", "11NAHT40MINUS" ] }
-    HARDWARE_SPECTRAL_WIDTHS =   { "Nanostation Loco M5" => [ 5, 10, 20, 40 ] } 
+    HARDWARE_RADIO_FREQUENCIES = {
+      "Nanostation Loco M5" => [ FIVE_GHZ_FREQUENCIES ],
+      "Nanostation Loco M2" => [ TWO_GHZ_FREQUENCIES ],
+    }
+    HARDWARE_RADIO_MODES = {
+      "Nanostation Loco M5" => [ "11NAHT20", "11NAHT40", "11NAHT40PLUS", "11NAHT40MINUS" ],
+      "Nanostation Loco M2" => [ "11NGHT20", "11NGHT40", "11NGHT40PLUS", "11NGHT40MINUS" ],
+    }
+    HARDWARE_SPECTRAL_WIDTHS =   {
+      "Nanostation Loco M5" => [ 5, 10, 20, 40 ],
+      "Nanostation Loco M2" => [ 5, 10, 20, 40 ],
+    }
 
     # Define getter and setter methods for simple, one-line directives
     [ 
@@ -70,172 +80,203 @@ module UBNT
         end
       end
 
-    def initialize(hardware_type, config = {})
-      unless HARDWARE_TYPES.include?(hardware_type) then
-        raise NotValidHardware.new("The requested hardware type is non-existant or not defined.")
+      def initialize(hardware_type, config = {})
+        unless HARDWARE_TYPES.include?(hardware_type) then
+          raise NotValidHardware.new("The requested hardware type is non-existant or not defined.")
+        end
+
+        @hardware_type = hardware_type
+        @config = Hash.new
+        # Start with the factory-default configuration
+        @config.merge!(factory_default)
+        @config.merge!(config) if config.length > 0
+
+        @frequency = 0
+        @bandwidth = "auto"
+
+        raise ArgumentError("Hardware type #{hardware_type} is not valid") unless HARDWARE_TYPES.include?(hardware_type)
       end
 
-      @hardware_type = hardware_type
-      @config = Hash.new
-      # Start with the factory-default configuration
-      @config.merge!(factory_default)
-      @config.merge!(config) if config.length > 0
-
-      raise ArgumentError("Hardware type #{hardware_type} is not valid") unless HARDWARE_TYPES.include?(hardware_type)
-    end # def initialize
-
-    def to_s
-      lines = []
-      config.each do |key, value|
-        lines << "#{key}=#{value}"
+      def to_s
+        lines = []
+        config.each do |key, value|
+          lines << "#{key}=#{value}"
+        end
+        lines = lines.join("\n")
+        # Trailing newlines are appreciated everywhere.
+        lines = lines + "\n"
       end
-      lines = lines.join("\n")
-      # Trailing newlines are appreciated everywhere.
-      lines = lines + "\n"
-    end
 
 
 
-    # clksel almost seems like a frequency or spectral-width divider of some sort.
-    # cwm seems to indicate if bandwidth multiplication should occur
-    #
-    # bandwidth seems to be set by "radio.1.clksel"
-    # 1 -- 40 Mhz
-    # 1 -- 20 Mhz
-    # 2 -- 10 Mhz
-    # 4 -- 5  Mhz
-    #
-    # radio.1.cwm.mode
-    # 2 -- 40 Mhz (11NAHT40, 11NAHT40PLUS, 11NAHT40MINUS)
-    # 1 -- auto 20/40 Mhz (11NAHT40)
-    # 0 -- 20 Mhz (11NAHT20)
-    # 0 -- 10 Mhz (11NAHT20)
-    # 0 -- 5  Mhz (11NAHT20)
-    #
-    # if radio.N.freq is "0", with 40 Mhz channels, the plus/minus can be left off. It's selected automatically (lower for every frequency, except the last)
-
-# 5 Mhz MCS Rates
-# MCS 15 - 32.5
-# MCS 14 - 29.25
-# MCS 13 - 26
-# MCS 12 - 19.5
-# MCS 11 - 13
-# MCS 10 - 9.75
-# MCS 9 - 6.5
-# MCS 8 - 3.25
-# MCS 7 - 16.25
-# MCS 6 - 14.625
-# MCS 5 - 13
-# MCS 4 - 9.75
-# MCS 3 - 6.5
-# MCS 2 - 4.875
-# MCS 1 - 3.25
-# MCS 0 - 1.625
-
-# 10 Mhz MCS
-# MCS 15 - 65
-# MCS 14 - 58.5
-# MCS 13 - 52
-# MCS 12 - 39
-# MCS 11 - 26
-# MCS 10 - 19.5
-# MCS 9 - 13
-# MCS 8 - 6.5
-# MCS 7 - 32.5
-# MCS 6 - 29.25
-# MCS 5 - 26
-# MCS 4 - 19.5
-# MCS 3 - 13
-# MCS 2 - 9.75
-# MCS 1 - 6.5
-# MCS 0 - 3.25
-
-# 20 Mhz MCS
-# MCS 15 - 130
-# MCS 14 - 117
-# MCS 13 - 104
-# MCS 12 - 78
-# MCS 11 - 52
-# MCS 10 - 39
-# MCS 9 - 26
-# MCS 8 - 13
-# MCS 7 - 65
-# MCS 6 - 58.5
-# MCS 5 - 52
-# MCS 4 - 39
-# MCS 3 - 26
-# MCS 2 - 19.5
-# MCS 1 - 13
-# MCS 0 - 6.5
-
-# 20/40 Mhz MCS
-# MCS 15 - 130 [300]
-# MCS 14 - 117 [270]
-# MCS 13 - 104 [240]
-# MCS 12 - 78 [180]
-# MCS 11 - 52 [120]
-# MCS 10 - 39 [90]
-# MCS 9 - 26 [60]
-# MCS 8 - 13 [30]
-# MCS 7 - 65 [150]
-# MCS 6 - 58.5 [135]
-# MCS 5 - 52 [120]
-# MCS 4 - 39 [90]
-# MCS 3 - 26 [60]
-# MCS 2 - 19.5 [45]
-# MCS 1 - 13 [30]
-# MCS 0 - 6.5 [15]
-
-    # Set the transmission and reception bandwidth, in Mhz
-    def bandwidth(mhz)
-      @spectrum_bandwidth = mhz
-      determine_rf_mode
-    end
-
-    # TODO
-    def spectrum_bandwidth
-    end
-
-    # Set the desired spectrum bandwidth.
-    def spectrum_bandwidth=(width)
-      compatible_widths = HARDWARE_SPECTRAL_WIDTHS[hardware_type]
-      unless compatible_widths.include?(width) then
-        raise NotValid.new("Spectrum width #{width} is not one of #{compatible_widths.inspect}")
-      end
-      @spectrum_bandwidth = width
-    end
-
-    # Determine which mode to set for an extension channel, if necessary.
-    def determine_rf_mode
-      # frequency and spectral width determines mode
+      # clksel almost seems like a frequency or spectral-width divider of some sort.
+      # cwm seems to indicate if bandwidth multiplication should occur
       #
-      # if frequency and bandwidth are set, see if the lower step in the frequency range is available, if not check the upper step and assign that, if the lower one is available, take that
-      # if the frequency is set, use the default mode and apply the above logic
-      # if the spectral width, but not frequency is set, set the freq to zero but don't set plus/minus
+      # bandwidth seems to be set by "radio.1.clksel"
+      # 1 -- 40 Mhz
+      # 1 -- 20 Mhz
+      # 2 -- 10 Mhz
+      # 4 -- 5  Mhz
+      #
+      # radio.1.cwm.mode
+      # 2 -- 40 Mhz (11NAHT40, 11NAHT40PLUS, 11NAHT40MINUS)
+      # 1 -- auto 20/40 Mhz (11NAHT40)
+      # 0 -- 20 Mhz (11NAHT20)
+      # 0 -- 10 Mhz (11NAHT20)
+      # 0 -- 5  Mhz (11NAHT20)
+      #
+      # if radio.N.freq is "0", with 40 Mhz channels, the plus/minus can be left off. It's selected automatically (lower for every frequency, except the last)
 
-      if frequency == 0 then
-        return "" # "auto"?
+      # 5 Mhz MCS Rates
+      # MCS 15 - 32.5
+      # MCS 14 - 29.25
+      # MCS 13 - 26
+      # MCS 12 - 19.5
+      # MCS 11 - 13
+      # MCS 10 - 9.75
+      # MCS 9 - 6.5
+      # MCS 8 - 3.25
+      # MCS 7 - 16.25
+      # MCS 6 - 14.625
+      # MCS 5 - 13
+      # MCS 4 - 9.75
+      # MCS 3 - 6.5
+      # MCS 2 - 4.875
+      # MCS 1 - 3.25
+      # MCS 0 - 1.625
+
+      # 10 Mhz MCS
+      # MCS 15 - 65
+      # MCS 14 - 58.5
+      # MCS 13 - 52
+      # MCS 12 - 39
+      # MCS 11 - 26
+      # MCS 10 - 19.5
+      # MCS 9 - 13
+      # MCS 8 - 6.5
+      # MCS 7 - 32.5
+      # MCS 6 - 29.25
+      # MCS 5 - 26
+      # MCS 4 - 19.5
+      # MCS 3 - 13
+      # MCS 2 - 9.75
+      # MCS 1 - 6.5
+      # MCS 0 - 3.25
+
+      # 20 Mhz MCS
+      # MCS 15 - 130
+      # MCS 14 - 117
+      # MCS 13 - 104
+      # MCS 12 - 78
+      # MCS 11 - 52
+      # MCS 10 - 39
+      # MCS 9 - 26
+      # MCS 8 - 13
+      # MCS 7 - 65
+      # MCS 6 - 58.5
+      # MCS 5 - 52
+      # MCS 4 - 39
+      # MCS 3 - 26
+      # MCS 2 - 19.5
+      # MCS 1 - 13
+      # MCS 0 - 6.5
+
+      # 20/40 Mhz MCS
+      # MCS 15 - 130 [300]
+      # MCS 14 - 117 [270]
+      # MCS 13 - 104 [240]
+      # MCS 12 - 78 [180]
+      # MCS 11 - 52 [120]
+      # MCS 10 - 39 [90]
+      # MCS 9 - 26 [60]
+      # MCS 8 - 13 [30]
+      # MCS 7 - 65 [150]
+      # MCS 6 - 58.5 [135]
+      # MCS 5 - 52 [120]
+      # MCS 4 - 39 [90]
+      # MCS 3 - 26 [60]
+      # MCS 2 - 19.5 [45]
+      # MCS 1 - 13 [30]
+      # MCS 0 - 6.5 [15]
+
+      # Validate and set the Atheros hardware mode
+      def atheros_mode=(mode)
+        compatible_modes = HARDWARE_RADIO_MODES[@hardware_type]
+        unless compatible_modes.include?(mode) then
+          raise NotValid.new("Atheros mode #{mode} is not one of #{compatible_modes.inspect}")
+        end
+        # Set the convenience name
+        @atheros_mode = mode
+        # Set the mode in the configuration
+        rf_mode = mode
       end
 
+      def validate_rf_configuration
+        # FIXME: bandwidth needs to already be set
+        #
+        # frequency should be either 0 (if so, mode should be "auto"), or something valid in the steps of hardware freq. ranges -- mode should match
+        # mode should be one in the list
+        # bandwidth should be in the list
 
-
-      case spectrum_bandwidth
-      when 5, 10, 20
-        return "11NAHT20"
-      when 40
-        hardware_ranges = HARDWARE_RADIO_FREQUENCIES[hardware_type]
-        desired_frequency_range = hardware_ranges.select { |range| range.include?(frequency) }.first
-        unless desired_frequency_range then
-          raise NotValid.new("Configured frequency #{frequency} not valid for hardware type of #{hardware_type}.")
+        if frequency == 0 then
+          unless atheros_mode == "auto" then
+            raise NotValid.new("The frequency is set to 0, but the atheros_mode is #{atheros_mode} and not \"auto\"")
+          end
         end
 
-        frequency_table_index = desired_frequency_range.step(spectrum_bandwidth).index(frequency)
-        if frequency_table_index == 0 then # We're at the bottom of the spectrum
-          return "11NAHT40PLUS"
-        else # We're somewhere in the middle or at the upper end
-          return "11NAHT40MINUS"
+        possible_frequencies = HARDWARE_RADIO_FREQUENCIES[@hardware_type].map { |range| range.step(@bandwidth) }.flatten
+      end
+
+      # Set the center carrier frequency.
+      def frequency=(mhz)
+        # if 0, set the atheros_mode to auto
+        compatible_center_frequencies = HARDWARE_RADIO_FREQUENCIES[@hardware_type]
+        compatible_center_frequencies.map! do |range|
         end
       end
+
+      # Set the transmission and reception bandwidth, in Mhz
+      def bandwidth=(mhz)
+        compatible_widths = HARDWARE_SPECTRAL_WIDTHS[@hardware_type]
+        unless compatible_widths.include?(width) then
+          raise NotValid.new("Spectrum width #{width} is not one of #{compatible_widths.inspect}")
+        end
+        @bandwidth = mhz
+        determine_atheros_mode
+      end
+
+      # Determine which mode to set for the underlying Atheros chipset, and if an
+      # extension channel (and corresponding mode) is necessary.
+      def determine_atheros_mode
+        # frequency and spectral width determines mode
+        #
+        # if frequency and bandwidth are set, see if the lower step in the frequency range is available, if not check the upper step and assign that, if the lower one is available, take that
+        # if the frequency is set, use the default mode and apply the above logic
+        # if the spectral width, but not frequency is set, set the freq to zero but don't set plus/minus
+
+        if frequency == 0 then
+          return "" # "auto"?
+        end
+
+
+
+        case spectrum_bandwidth
+        when 5, 10, 20
+          return "11NAHT20"
+        when 40
+          hardware_ranges = HARDWARE_RADIO_FREQUENCIES[hardware_type]
+          desired_frequency_range = hardware_ranges.select { |range| range.include?(frequency) }.first
+          unless desired_frequency_range then
+            raise NotValid.new("Configured frequency #{frequency} not valid for hardware type of #{hardware_type}.")
+          end
+
+          frequency_table_index = desired_frequency_range.step(spectrum_bandwidth).index(frequency)
+          if frequency_table_index == 0 then # We're at the bottom of the spectrum
+            return "11NAHT40PLUS"
+          else # We're somewhere in the middle or at the upper end
+            return "11NAHT40MINUS"
+          end
+        end
       end
 
     end
