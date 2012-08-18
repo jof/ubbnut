@@ -1,13 +1,18 @@
+require 'socket'
+require 'rubygems'
+require 'packetfu'
+
 module UBNT
   class Locator
     # Use arping to find deafult configured devices. This only really makes sense
     # if you have a bunch of unconfigured devices that you want to enumerate.
-    def self.locate(method = :arp, options = {})
-      raise ArgumentError.new('Interface name required') if method == :arp and not options[:interface_name]
+    def self.locate(options = {})
+      discovery_method = options[:discovery_method] || :arp
+      raise ArgumentError.new('Interface name required') if discovery_method == :arp and not options[:interface_name]
       interface_name = options[:interface_name] or nil
       ip = options[:ip] or "192.168.1.20"
 
-      case method
+      case discovery_method
       when :arp
         arping_output = `arping`
         if $?.exitcode == 127 then
@@ -35,8 +40,30 @@ module UBNT
         end
         return devices
       when :udp # Ubiquiti-proprietary UDP discovery packets
-      end # case @method
+        sock = UDPSocket.new
+        sock.bind '0.0.0.0', 0
+        sock.send "\x01\x00\x00\x00", 0, '255.255.255.255', 10001
+        return []
+        
+        #UDPDiscoveryProbe.new.to_w(interface_name)
+      end # case @discovery_method
     end # def locate
 
   end # class Locator
+  class UDPDiscoveryProbePacket < PacketFu::UDPPacket
+    def initialize()
+      super
+      # FIXME: This is the only value I've observed in probe discovery.
+      #   Is there something more to this side of the protocol?
+      self.payload = "\x01\x00\x00\x00"
+      @eth_header.eth_daddr = 'ff:ff:ff:ff:ff:ff'
+      @ip_header.ip_daddr = '255.255.255.255'
+      @udp_header.udp_dst = 10001
+      self.recalc
+    end
+  end # class UDPDiscoveryProbe
 end # module UBNT
+
+if $0 == __FILE__ then
+  p UBNT::Locator.locate(:discovery_method => :udp)
+end
