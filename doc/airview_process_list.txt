@@ -1,0 +1,107 @@
+Before starting:
+
+XM.v5.5# ps 
+  PID USER       VSZ STAT COMMAND
+    1 ubnt      1976 S    init       
+    2 ubnt         0 SW   [kthreadd]
+    3 ubnt         0 SW   [ksoftirqd/0]
+    4 ubnt         0 SW   [events/0]
+    5 ubnt         0 SW   [khelper]
+    8 ubnt         0 SW   [async/mgr]
+   50 ubnt         0 SW   [sync_supers]
+   52 ubnt         0 SW   [bdi-default]
+   54 ubnt         0 SW   [kblockd/0]
+   59 ubnt         0 SW   [khubd]
+   81 ubnt         0 SW   [kswapd0]
+   82 ubnt         0 SW   [aio/0]
+   83 ubnt         0 SW   [crypto/0]
+  165 ubnt         0 SW   [mtdblockd]
+  360 ubnt         0 SW   [flush-31:0]
+  494 ubnt      1140 S    /sbin/hotplug2 --persistent --set-rules-file /usr/etc/hotplug2.rules 
+  496 ubnt      1968 S <  /bin/watchdog -t 1 /dev/watchdog 
+  885 ubnt      3640 S    /bin/infctld -m -c 
+  886 ubnt      4256 S    /bin/lighttpd -D -f /etc/lighttpd.conf 
+  887 ubnt      1940 S    /bin/dropbear -F -d /etc/persistent/dropbear_dss_host_key -r /etc/persistent/dropbear_rsa_h
+  888 ubnt      1976 S    init       
+  927 ubnt      1996 S    /bin/dropbear -F -d /etc/persistent/dropbear_dss_host_key -r /etc/persistent/dropbear_rsa_h
+  928 ubnt      1980 S    -sh 
+  930 ubnt      1976 R    ps 
+
+
+After starting:
+
+XM.v5.5# ps
+  PID USER       VSZ STAT COMMAND
+    1 ubnt      1976 S    init       
+    2 ubnt         0 SW   [kthreadd]
+    3 ubnt         0 SW   [ksoftirqd/0]
+    4 ubnt         0 SW   [events/0]
+    5 ubnt         0 SW   [khelper]
+    8 ubnt         0 SW   [async/mgr]
+   50 ubnt         0 SW   [sync_supers]
+   52 ubnt         0 SW   [bdi-default]
+   54 ubnt         0 SW   [kblockd/0]
+   59 ubnt         0 SW   [khubd]
+   81 ubnt         0 SW   [kswapd0]
+   82 ubnt         0 SW   [aio/0]
+   83 ubnt         0 SW   [crypto/0]
+  165 ubnt         0 SW   [mtdblockd]
+  494 ubnt      1140 S    /sbin/hotplug2 --persistent --set-rules-file /usr/etc/hotplug2.rules 
+  496 ubnt      1968 S <  /bin/watchdog -t 1 /dev/watchdog 
+  885 ubnt      3640 S    /bin/infctld -m -c 
+  886 ubnt      4256 S    /bin/lighttpd -D -f /etc/lighttpd.conf 
+  887 ubnt      1940 S    /bin/dropbear -F -d /etc/persistent/dropbear_dss_host_key -r /etc/persistent/dropbear_rsa_h
+  888 ubnt      1976 S    init       
+  927 ubnt      1996 S    /bin/dropbear -F -d /etc/persistent/dropbear_dss_host_key -r /etc/persistent/dropbear_rsa_h
+  928 ubnt      1980 S    -sh 
+  980 ubnt      1996 S    /bin/sh /sbin/airview web_start 
+  981 ubnt      2000 S    /bin/sh /sbin/airview service 
+ 1029 ubnt      3512 S    spectralserver radio_interface=wifi0 vap_interface=ath0 
+ 1030 ubnt      3512 S    spectralserver radio_interface=wifi0 vap_interface=ath0 
+ 1031 ubnt      3512 S    spectralserver radio_interface=wifi0 vap_interface=ath0 
+ 1032 ubnt      3512 S    spectralserver radio_interface=wifi0 vap_interface=ath0 
+ 1033 ubnt      3512 S    spectralserver radio_interface=wifi0 vap_interface=ath0 
+ 1034 ubnt      3512 S    spectralserver radio_interface=wifi0 vap_interface=ath0 
+ 1035 ubnt      3512 S    spectralserver radio_interface=wifi0 vap_interface=ath0 
+ 1036 ubnt      3512 S    spectralserver radio_interface=wifi0 vap_interface=ath0 
+ 1037 ubnt      3512 S    spectralserver radio_interface=wifi0 vap_interface=ath0 
+ 1038 ubnt      3512 S    spectralserver radio_interface=wifi0 vap_interface=ath0 
+ 1039 ubnt      1976 R    ps 
+
+
+And as it's shutting down:
+
+XM.v5.5# ps
+  PID USER       VSZ STAT COMMAND
+    1 ubnt      1976 S    init       
+    2 ubnt         0 SW   [kthreadd]
+    3 ubnt         0 SW   [ksoftirqd/0]
+    4 ubnt         0 SW   [events/0]
+    5 ubnt         0 SW   [khelper]
+    8 ubnt         0 SW   [async/mgr]
+   50 ubnt         0 SW   [sync_supers]
+   52 ubnt         0 SW   [bdi-default]
+   54 ubnt         0 SW   [kblockd/0]
+   59 ubnt         0 SW   [khubd]
+   81 ubnt         0 SW   [kswapd0]
+   82 ubnt         0 SW   [aio/0]
+   83 ubnt         0 SW   [crypto/0]
+  165 ubnt         0 SW   [mtdblockd]
+  494 ubnt      1140 S    /sbin/hotplug2 --persistent --set-rules-file /usr/etc/hotplug2.rules 
+  888 ubnt      1976 S    init       
+ 1161 ubnt      1968 S <  /bin/watchdog -t 1 /dev/watchdog 
+ 1304 ubnt      3640 S    /bin/infctld -m -c 
+ 1305 ubnt      4208 S    /bin/lighttpd -D -f /etc/lighttpd.conf 
+ 1306 ubnt      1940 S    /bin/dropbear -F -d /etc/persistent/dropbear_dss_host_key -r /etc/persistent/dropbear_rsa_h
+ 1324 ubnt      1996 S    /bin/dropbear -F -d /etc/persistent/dropbear_dss_host_key -r /etc/persistent/dropbear_rsa_h
+ 1326 ubnt      1980 S    -sh 
+ 1376 ubnt      1996 S    /bin/sh /sbin/airview web_start 
+ 1377 ubnt      2000 S    /bin/sh /sbin/airview service 
+ 1425 ubnt         0   []
+ 1426 ubnt         0   []
+ 1427 ubnt         0   []
+ 1428 ubnt         0   []
+ 1429 ubnt         0   []
+ 1430 ubnt         0   []
+ 1441 ubnt      1976 R    ps 
+ 1442 ubnt      1972 R    cat /tmp/airview_shutdown 
