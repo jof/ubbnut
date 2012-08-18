@@ -41,10 +41,14 @@ module UBNT
       end
 
       # Put the config into place on the remote filesystem.
-      def push
+      def place_config
         if self.valid? and self.connect then
           @ssh_connection.scp.upload!(StringIO.new(@config.to_s), "/tmp/system.cfg")
         end
+      end
+
+      def push
+        self.place_config
       end
 
       # Put the configuration into place on the remote filesystem *and*
@@ -63,8 +67,6 @@ module UBNT
           #@ssh_connection.exec!("reboot") or raise
         end
       end
-
-      # Put the config into place on the remote FS and apply it as well.
 
       # Pull the configuration from the device and parse it.
       def pull
