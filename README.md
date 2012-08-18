@@ -24,3 +24,31 @@ Currently Supported Devices
 * Ubiquiti Nanostation Loco M2 - [http://www.ubnt.com/nanostationm](http://www.ubnt.com/nanostationm)
 
 Adding support for more devices should probably only need to update constants in lib/ubnt/device. However, anecdotes and past comparisons have shown that there may be some "key" strings in the configuration may differ between hardware. More research is warranted. 
+
+
+Future plans / TODO / FIXME / HACKING
+-------------------------------------
+
+- Ubiquiti-proprietary UDP discovery protocol
+
+There is a Ubiquiti discovery protocol that operates over UDP port 10001. It
+sends probes for radio hardware, and gets back responses that describe the
+hardware, firmware image, MAC address, etc.
+
+It would be great if this library could send probes and parse their responses.
+There is some existing work to craft and fire off a probe packet utilizing the
+PacketFu library. See lib/ubnt/locater.rb
+
+- Ubiquiti-proprietary spectral analysis ("AirView",
+  spectral{player,server,tool} binaries, TCP/18888 protocol)
+
+There is a Ubiquiti protocol that operates over TCP port 18888, dumping
+spectral signal information from a special daemon that operates on the radio
+hardware. In conjunction with a Java program on the client side, this displays
+a spectragraph showing spectral usage.
+
+It would be great if this library could initiate the special daemon to run on
+the radio hardware, connect up to it, query for spectral frame date, and parse
+the responsees.
+
+There are some protocol dumps and process list dumps in doc/
