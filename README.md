@@ -20,8 +20,7 @@ It should be able to:
 
 Currently Supported Devices
 ---------------------------
-* Ubiquiti Nanostation Loco M5 - [http://www.ubnt.com/nanostationm](http://www.ubnt.com/nanostationm)
-* Ubiquiti Nanostation Loco M2 - [http://www.ubnt.com/nanostationm](http://www.ubnt.com/nanostationm)
+* Ubiquiti Nanostation Loco {M2, M5} - [http://www.ubnt.com/airmax/nanostationm/](http://www.ubnt.com/airmax/nanostationm/)
 
 Adding support for more devices should probably only need to update constants in lib/ubnt/device. However, anecdotes and past comparisons have shown that there may be some "key" strings in the configuration may differ between hardware. More research is warranted. 
 
